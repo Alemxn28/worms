@@ -1,0 +1,26 @@
+{
+  "name": "tt",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aedes": "^0.51.0",
+    "aedes-persistence": "^9.1.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "jsonschema": "^1.4.1",
+    "mosca": "^2.8.3",
+    "mqtt": "^5.3.6",
+    "mqtt-packet": "^9.0.0",
+    "mysql": "^2.18.1",
+    "serialport": "^12.0.0",
+    "socket.io": "^4.7.5"
+  }
+}
