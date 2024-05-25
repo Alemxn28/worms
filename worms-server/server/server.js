@@ -71,8 +71,50 @@ sub.on('message', (topic, message) => {
   const messageString = message.toString();
   console.log('Mensaje recibido en el tópico', topic, ':', messageString);
 
-  // Aquí puedes definir cómo manejar los mensajes de cada tópico
+  if (topic === 'temperatura') {
+      const floatValue = parseFloat(messageString);
+      if (!isNaN(floatValue)) {
+          const sql = 'INSERT INTO temperatura (DATA) VALUES (?)';
+          db.query(sql, [floatValue], (error, results) => {
+              if (error) {
+                  console.error('Error al insertar en tabla1:', error);
+              } else {
+                  console.log('Valor insertado en tabla1:', floatValue);
+                  io.emit('temperatura1', { value: floatValue }); // Emitir los datos al frontend
+              }
+          });
+      }
+  } else if (topic === 'humedad') {
+      const data = parseInt(messageString, 10);
+      if (!isNaN(data)) {
+          const sql = 'INSERT INTO humedad1 SET ?';
+          const values = { data: data };
+          db.query(sql, values, (error, results) => {
+              if (error) {
+                  console.error('Error al insertar en la base de datos:', error);
+              } else {
+                  console.log('¡Datos guardados!');
+                  io.emit('humedad1', { value: data }); // Emitir los datos al frontend
+              }
+          });
+      }
+  } else if (topic === 'ph') {
+    const data = parseInt(messageString, 10);
+    if (!isNaN(data)) {
+        const sql = 'INSERT INTO ph SET ?';
+        const values = { data: data };
+        db.query(sql, values, (error, results) => {
+            if (error) {
+                console.error('Error al insertar en la base de datos:', error);
+            } else {
+                console.log('¡Datos guardados!');
+                io.emit('ph1', { value: data }); // Emitir los datos al frontend
+            }
+        });
+    }
+}
 });
+
 
 app.get('/api/data/:timeframe', (req, res) => {
   const timeframe = req.params.timeframe;

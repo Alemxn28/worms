@@ -51,10 +51,10 @@ const Records = () => {
       medida_humedad: hum.data,
       fecha_humedad: hum.created_at,
       id_temp: data.temperatura[index] ? data.temperatura[index].id : '',
-      medida_temp: data.temperatura[index] ? data.temperatura[index].data : '',
+      medida_temp: data.temperatura[index] ? data.temperatura[index].DATA : '',
       fecha_temp: data.temperatura[index] ? data.temperatura[index].created_at : '',
-      id_ph: data.ph[index] ? data.ph[index].id : '',
-      medida_ph: data.ph[index] ? data.ph[index].data : '',
+      id_ph: data.ph[index] ? data.ph[index].id : '', 
+      medida_ph: data.ph[index] ? data.ph[index].DATA : '',
       fecha_ph: data.ph[index] ? data.ph[index].created_at : ''
     }));
 
