@@ -3,7 +3,6 @@ import io from 'socket.io-client';
 import { Line } from 'react-chartjs-2';
 import 'chart.js/auto';
 
-// Función para obtener datos iniciales de localStorage
 const getInitialData = (key) => {
   const storedData = localStorage.getItem(key);
   return storedData ? JSON.parse(storedData) : [];
@@ -76,8 +75,8 @@ const Sensors = () => {
     }
   });
 
-  const createChartData = (labels, data, label) => ({
-    labels: labels.map((_, index) => index),
+  const createChartData = (data, label) => ({
+    labels: Array.from({ length: data.length }, (_, index) => index + 1),
     datasets: [{
       label: label,
       data: data,
@@ -87,6 +86,7 @@ const Sensors = () => {
   });
 
   const getWarningMessage = (type, value) => {
+    if (value === null) return '';
     switch (type) {
       case 'temperatura':
         if (value < 15) return 'Temperatura baja, considere aumentar la temperatura.';
@@ -115,7 +115,7 @@ const Sensors = () => {
             {currentTemperatura1 !== null ? `Valor actual: ${currentTemperatura1}°C` : 'Cargando...'}
           </p>
           <p className="text-red-500 text-center">{getWarningMessage('temperatura', currentTemperatura1)}</p>
-          <Line data={createChartData(Array(temperatura1Data.length), temperatura1Data, "Temperatura 1")} options={chartOptions(10, 35)} />
+          <Line data={createChartData(temperatura1Data, "Temperatura 1")} options={chartOptions(10, 35)} />
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Sensor 1 - Humedad</h2>
@@ -123,7 +123,7 @@ const Sensors = () => {
             {currentHumedad1 !== null ? `Valor actual: ${currentHumedad1}%` : 'Cargando...'}
           </p>
           <p className="text-red-500 text-center">{getWarningMessage('humedad', currentHumedad1)}</p>
-          <Line data={createChartData(Array(humedad1Data.length), humedad1Data, "Humedad 1")} options={chartOptions(0, 100)} />
+          <Line data={createChartData(humedad1Data, "Humedad 1")} options={chartOptions(0, 100)} />
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Sensor 2 - Temperatura</h2>
@@ -131,7 +131,7 @@ const Sensors = () => {
             {currentTemperatura2 !== null ? `Valor actual: ${currentTemperatura2}°C` : 'Cargando...'}
           </p>
           <p className="text-red-500 text-center">{getWarningMessage('temperatura', currentTemperatura2)}</p>
-          <Line data={createChartData(Array(temperatura2Data.length), temperatura2Data, "Temperatura 2")} options={chartOptions(10, 35)} />
+          <Line data={createChartData(temperatura2Data, "Temperatura 2")} options={chartOptions(10, 35)} />
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Sensor 2 - Humedad</h2>
@@ -139,7 +139,7 @@ const Sensors = () => {
             {currentHumedad2 !== null ? `Valor actual: ${currentHumedad2}%` : 'Cargando...'}
           </p>
           <p className="text-red-500 text-center">{getWarningMessage('humedad', currentHumedad2)}</p>
-          <Line data={createChartData(Array(humedad2Data.length), humedad2Data, "Humedad 2")} options={chartOptions(0, 100)} />
+          <Line data={createChartData(humedad2Data, "Humedad 2")} options={chartOptions(0, 100)} />
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Sensor de pH</h2>
@@ -147,7 +147,7 @@ const Sensors = () => {
             {currentPh !== null ? `Valor actual: ${currentPh}` : 'Cargando...'}
           </p>
           <p className="text-red-500 text-center">{getWarningMessage('ph', currentPh)}</p>
-          <Line data={createChartData(Array(phData.length), phData, "pH1")} options={chartOptions(0, 14)} />
+          <Line data={createChartData(phData, "pH1")} options={chartOptions(0, 14)} />
         </div>
       </div>
     </main>

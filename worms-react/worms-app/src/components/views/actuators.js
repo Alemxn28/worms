@@ -3,13 +3,11 @@ import Actuator from '../Layout/actuator';
 import { faFan, faTint, faPowerOff } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AdminContext } from '../../states/adminContext';
+import { useActuators } from '../../states/actuatorsContext';
 
 const Actuators = () => {
   const { monitoringStatus, toggleMonitoring, setMonitoringStatus } = useContext(AdminContext);
-
-  useEffect(() => {
-    localStorage.setItem('monitoringStatus', JSON.stringify(monitoringStatus));
-  }, [monitoringStatus]);
+  const { setActuators } = useActuators();
 
   useEffect(() => {
     const storedStatus = JSON.parse(localStorage.getItem('monitoringStatus'));
@@ -18,13 +16,43 @@ const Actuators = () => {
     }
   }, [setMonitoringStatus]);
 
-  const sendCommandToRelay = (command) => {
+  useEffect(() => {
+    localStorage.setItem('monitoringStatus', JSON.stringify(monitoringStatus));
+    if (monitoringStatus) {
+      sendModeCommand('ON');
+    } else {
+      sendModeCommand('OFF');
+      // Ensure all actuators are turned off when switching to manual mode
+      sendCommandToRelay('Ventilador', 'OFF');
+      sendCommandToRelay('Sistema de Riego', 'OFF');
+      // Reset the actuators' states to OFF in the context
+      setActuators({
+        Ventilador: false,
+        SistemaRiego: false,
+      });
+    }
+  }, [monitoringStatus, setActuators]);
+
+  const sendCommandToRelay = (name, status) => {
     fetch('http://localhost:3000/actuadores', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status: command })
+      body: JSON.stringify({ name, status })
+    })
+    .then(response => response.json())
+    .then(data => console.log(data.message))
+    .catch(error => console.error('Error:', error));
+  };
+
+  const sendModeCommand = (status) => {
+    fetch('http://localhost:3000/modo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status })
     })
     .then(response => response.json())
     .then(data => console.log(data.message))
@@ -44,7 +72,7 @@ const Actuators = () => {
           <h2 className="text-xl font-semibold">{monitoringStatus ? 'Sistema Encendido' : 'Sistema Apagado'}</h2>
           <button
             className={`mt-4 px-4 py-2 rounded-full text-white font-bold ${monitoringStatus ? 'bg-green-500' : 'bg-red-500'}`}
-            onClick={() => sendCommandToRelay(monitoringStatus ? 'OFF' : 'ON')}
+            onClick={() => toggleMonitoring()}
           >
             {monitoringStatus ? 'Apagar' : 'Encender'}
           </button>
@@ -53,8 +81,8 @@ const Actuators = () => {
           <h1 className="text-3xl font-bold mb-6 text-center">Actuadores</h1>
           <p className="mb-4 text-center">Aquí puede revisar el estado de los actuadores y modificarlos manualmente</p>
           <div className="flex justify-center flex-wrap space-x-4">
-            <Actuator name="Ventilador" icon={faFan} disabled={!monitoringStatus} />
-            <Actuator name="Sistema de Riego" icon={faTint} disabled={!monitoringStatus} />
+          <Actuator name="Ventilador" icon={faFan} disabled={monitoringStatus} sendCommand={sendCommandToRelay} />
+          <Actuator name="Sistema de Riego" icon={faTint} disabled={monitoringStatus} sendCommand={sendCommandToRelay} />
           </div>
         </div>
       </div>

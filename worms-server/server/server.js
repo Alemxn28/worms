@@ -59,6 +59,7 @@ db.connect(err => {
 
 // Conexión al servidor MQTT
 const sub = mqtt.connect('mqtt://localhost:9000');
+const pub = mqtt.connect('mqtt://localhost:9000');
 
 // Subscripción a tópicos
 sub.on('connect', () => {
@@ -116,6 +117,23 @@ sub.on('message', (topic, message) => {
 }
 });
 
+app.post('/actuadores', (req, res) => {
+  const { name, status } = req.body;
+  let topic = '';
+  if (name === 'Ventilador') {
+    topic = 'actuador/ventilador';
+  } else if (name === 'Sistema de Riego') {
+    topic = 'actuador/bombaDeAgua';
+  }
+  pub.publish(topic, status);
+  res.json({ message: `Comando ${status} enviado al ${name}.` });
+});
+
+app.post('/modo', (req, res) => {
+  const { status } = req.body;
+  pub.publish('modo/automatico', status);
+  res.json({ message: `Modo automático ${status}` });
+});
 
 app.get('/api/data/:timeframe', (req, res) => {
   const timeframe = req.params.timeframe;
@@ -225,10 +243,6 @@ app.get('/actuadores', (req, res) => {
     res.sendFile('Actuadores.html', { root: __dirname });
   } else {
     res.redirect('/login');
-
-    const { status } = req.body; // status puede ser 'ON' o 'OFF'
-    mqttClient.publish('actuador/relevador', status);
-    res.json({ message: 'Comando enviado al relevador.' });
   }
 });
 
@@ -256,7 +270,7 @@ app.get('/checkAuth', (req, res) => {
     res.json({ isAuthenticated: false });
   }
 });
-//process.env.NODE_ENV
+
 // Servir archivos estáticos de React en producción
 if ( 'production' === 'production') {
   app.use(express.static(path.join(__dirname, '../../worms-react/worms-app/build')));

@@ -6,41 +6,30 @@
 
 // Definir el pin para los sensores OneWire
 #define ONE_WIRE_BUS 15
-const int sensorPin = 34; // Pin para el sensor de humedad
-const int sensorPin2 = 35; // Otro pin para el segundo sensor de humedad
-const int relePin1 = 5;    // Ventilador
-const int relePin2 = 4;    // Agua
-const int analogInPin = 36;  // GPIO 32 para entrada ADC
-const int sensorPin3 = 13; // sensor de nivel de agua 
+const int humedadSensorPin1 = 34; // Pin para el primer sensor de humedad
+const int humedadSensorPin2 = 35; // Pin para el segundo sensor de humedad
+const int ventiladorPin = 5;      // Ventilador
+const int bombaDeAguaPin = 4;     // Bomba de agua
+const int phSensorPin = 36;       // GPIO 32 para entrada ADC del sensor de pH
+const int nivelAguaSensorPin = 25; // Pin para el sensor de nivel de agua (flotador)
 
 float slope = -6.81;  
 float intercept = 23.87;  
 
 const int numReadings = 10;
-int readings1[numReadings]; 
-int readings2[numReadings];
+int humedadReadings1[numReadings]; 
+int humedadReadings2[numReadings];
 int readIndex1 = 0;         
 int readIndex2 = 0;
-int total1 = 0;             
-int total2 = 0;
-int average1 = 0;
-int average2 = 0;
-
-unsigned long lastPumpStartTime = 0;
-unsigned long pumpRunTime = 0;
-const unsigned long pumpInterval = 60000; // 10 minutos en milisegundos
-const unsigned long maxPumpTime = 50000; // 50 segundos acumulados
-
-unsigned long fanStartTime = 0;
-const unsigned long fanRunTime = 18000; // 30 minutos en milisegundos
-unsigned long lastFanOffTime = 0; // Tiempo cuando el ventilador fue apagado por última vez
-const unsigned long fanOffInterval = 12000; // 20 minutos en milisegundos
-bool fanRunning = false;
+int totalHumedad1 = 0;             
+int totalHumedad2 = 0;
+int averageHumedad1 = 0;
+int averageHumedad2 = 0;
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-const char* mqttServer = "192.168.205.38";
+const char* mqttServer = "192.168.0.9";
 const int mqttPort = 9000;
 const char* mqttUser = "";
 const char* mqttPassword = "";
@@ -48,28 +37,35 @@ const char* mqttPassword = "";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+bool isAutomaticMode = true; // Variable para controlar el modo automático
+
 void setup() {
     Serial.begin(9600);
     WiFiManager wifiManager;
-      //wifiManager.resetSettings();
-    
+
     if (!wifiManager.autoConnect("ESP32AP")) {
         Serial.println("Fallo en la conexión");
         ESP.restart();
     }
 
     Serial.println("Conectado a la red WiFi.");
-    pinMode(analogInPin,INPUT);
-    pinMode(relePin1, OUTPUT);
-    pinMode(relePin2, OUTPUT);
-    digitalWrite(relePin1, LOW);
-    digitalWrite(relePin2, LOW);
+    pinMode(phSensorPin, INPUT);
+    pinMode(bombaDeAguaPin, OUTPUT);
+    pinMode(ventiladorPin, OUTPUT);
+    pinMode(nivelAguaSensorPin, INPUT_PULLUP); // Configurar el pin del flotador como entrada con resistencia pull-up
+
+    digitalWrite(bombaDeAguaPin, LOW);
+    digitalWrite(ventiladorPin, LOW);
 
     client.setServer(mqttServer, mqttPort);
+    client.setCallback(callback); // Establecer la función de callback para manejar mensajes MQTT
+
     while (!client.connected()) {
         Serial.println("Connecting to MQTT...");
         if (client.connect("ESP32Client", mqttUser, mqttPassword)) {
             Serial.println("Connected");
+            client.subscribe("actuador/#"); // Suscribirse a los comandos de actuadores
+            client.subscribe("modo/automatico"); // Suscribirse a los cambios de modo automático/manual
         } else {
             Serial.print("Failed with state ");
             Serial.print(client.state());
@@ -77,104 +73,149 @@ void setup() {
         }
     }
     for (int thisReading = 0; thisReading < numReadings; thisReading++) {
-        readings1[thisReading] = 0;
-        readings2[thisReading] = 0;
+        humedadReadings1[thisReading] = 0;
+        humedadReadings2[thisReading] = 0;
     }
 
     sensors.begin();
     analogReadResolution(12); 
 }
 
-void loop() {
-    sensors.requestTemperatures();
-    float promedioTemp = leerYPromediarTemperaturas();
-    int nivel = digitalRead(analogInPin);
-    Serial.print(nivel);
-    Serial.println(" MEDIDA DE NIVEL DE Agua: ");
-    char tempString[20];
-    dtostrf(promedioTemp, 1, 2, tempString);
-     Serial.print(" Temperatura Promedio: ");
-        Serial.print(tempString);
-        Serial.println(" °C");
-    client.publish("temperatura", tempString);
+void callback(char* topic, byte* payload, unsigned int length) {
+    String messageTemp;
+    for (unsigned int i = 0; i < length; i++) {
+        messageTemp += (char)payload[i];
+    }
 
-    average1 = leerYSuavizarHumedad(sensorPin, readings1, readIndex1, total1);
-    average2 = leerYSuavizarHumedad(sensorPin2, readings2, readIndex2, total2);
+    Serial.print("Mensaje recibido en tópico: ");
+    Serial.print(topic);
+    Serial.print(". Mensaje: ");
+    Serial.println(messageTemp);
 
-    readIndex1 = (readIndex1 + 1) % numReadings;
-    readIndex2 = (readIndex2 + 1) % numReadings;
-
-    // Promedio de las dos lecturas de humedad
-    float promedioHumedad = (average1 + average2) / 2.0;
-
-    char humedadString1[8];
-    char humedadString2[8];
-    char promedioHumedadString[8];
-    
-    sprintf(humedadString1, "%d", average1);
-    sprintf(humedadString2, "%d", average2);
-    dtostrf(promedioHumedad, 1, 2, promedioHumedadString);
-
-    // Imprimir valores promediados y crudos en el Serial Monitor
-    Serial.print("Valor de humedad promediado sensor 1: ");
-    Serial.println(humedadString1);
-    Serial.print("Valor de humedad promediado sensor 2: ");
-    Serial.println(humedadString2);
-    Serial.print("Valor de humedad promediado de ambos sensores: ");
-    Serial.println(promedioHumedadString);
-    client.publish("humedad",promedioHumedadString );
-
-
-// Convertir a double
-double temp = atof(tempString);
-double humedadPromedio = atof(promedioHumedadString);
-
-unsigned long currentMillis = millis();
-    Serial.print("Current Millis: ");
-    Serial.println(currentMillis);
-    Serial.print("Last Fan Off Time: ");
-    Serial.println(lastFanOffTime);
-    Serial.print("Fan Off Interval: ");
-    Serial.println(fanOffInterval);
-
-// Control del relé basado en condiciones
-if (temp > 25.0 && humedadPromedio < 70.0) {
-  
-    digitalWrite(relePin1, HIGH); // Encender relé 1
-    digitalWrite(relePin2, HIGH); // Encender relé 2
-    Serial.println("Actuadores encendidos (Temp > 25°C, Hum < 70%)");
-} else if (temp > 25.0 && humedadPromedio >= 70.0 && humedadPromedio <= 80.0) {
-    digitalWrite(relePin1, HIGH); // Encender solo relé 1
-    digitalWrite(relePin2, LOW); // Apagar relé 2
-    Serial.println("Ventilador encendido, Bomba apagada (Temp > 25°C, Hum 70%-80%)");
-} else if (temp <= 25.0 && humedadPromedio < 70.0) {
-    digitalWrite(relePin1, LOW); // Apagar relé 1
-    digitalWrite(relePin2, HIGH); // Encender relé 2
-    Serial.println("Ventilador apagado, Bomba encendida (Temp <= 25°C, Hum < 70%)");
-} else {
-    digitalWrite(relePin1, LOW); // Apagar ambos relés por defecto
-    digitalWrite(relePin2, LOW);
-    Serial.println("Ambos relés apagados (Condición por defecto)");
+    if (String(topic) == "modo/automatico") {
+        if (messageTemp == "ON") {
+            isAutomaticMode = true;
+        } else if (messageTemp == "OFF") {
+            isAutomaticMode = false;
+            // Apagar los actuadores cuando se pasa a modo manual
+            digitalWrite(ventiladorPin, LOW);
+            digitalWrite(bombaDeAguaPin, LOW);
+        }
+        Serial.print("Modo automático: ");
+        Serial.println(isAutomaticMode ? "ON" : "OFF");
+    } else if (String(topic) == "actuador/ventilador") {
+        if (!isAutomaticMode) {
+            if (messageTemp == "ON") {
+                digitalWrite(ventiladorPin, HIGH);
+            } else if (messageTemp == "OFF") {
+                digitalWrite(ventiladorPin, LOW);
+            }
+        }
+    } else if (String(topic) == "actuador/bombaDeAgua") {
+        if (!isAutomaticMode) {
+            if (messageTemp == "ON") {
+                digitalWrite(bombaDeAguaPin, HIGH);
+            } else if (messageTemp == "OFF") {
+                digitalWrite(bombaDeAguaPin, LOW);
+            }
+        }
+    }
 }
 
-    int adcValue = analogRead(analogInPin);
-    float voltage = adcValue * (3.3 / 4095.0);
-    float pHValue = (voltage * slope) + intercept;
+void loop() {
+    client.loop();
 
+    if (isAutomaticMode) {
+        sensors.requestTemperatures();
+        float temperaturaPromedio = leerYPromediarTemperaturas();
 
+        // Leer el estado del flotador de nivel de agua
+        int nivelAgua = digitalRead(nivelAguaSensorPin);
+        bool aguaSuficiente = (nivelAgua == HIGH); // Invertir lógica: HIGH significa agua suficiente, LOW significa nivel bajo
 
+        if (aguaSuficiente) {
+            Serial.println("Nivel de agua: Suficiente");
+        } else {
+            Serial.println("Nivel de agua: Bajo");
+        }
 
-    char phString[20];
-    dtostrf(pHValue, 1, 2, phString);
-    Serial.print("Valor ADC: ");
-    Serial.print(adcValue);
-    Serial.print(", Voltaje: ");
-    Serial.print(voltage, 2);
-    Serial.print(" V, pH: ");
-    Serial.println(pHValue, 2);
-    client.publish("ph", phString);
+        char tempString[20];
+        dtostrf(temperaturaPromedio, 1, 2, tempString);
+        Serial.print("Temperatura Promedio: ");
+        Serial.print(tempString);
+        Serial.println(" °C");
+        client.publish("temperatura", tempString);
 
-    delay(1000);
+        averageHumedad1 = leerYSuavizarHumedad(humedadSensorPin1, humedadReadings1, readIndex1, totalHumedad1);
+        averageHumedad2 = leerYSuavizarHumedad(humedadSensorPin2, humedadReadings2, readIndex2, totalHumedad2);
+
+        readIndex1 = (readIndex1 + 1) % numReadings;
+        readIndex2 = (readIndex2 + 1) % numReadings;
+
+        float humedadPromedio = (averageHumedad1 + averageHumedad2) / 2.0;
+
+        char humedadString1[8];
+        char humedadString2[8];
+        char humedadPromedioString[8];
+        
+        sprintf(humedadString1, "%d", averageHumedad1);
+        sprintf(humedadString2, "%d", averageHumedad2);
+        dtostrf(humedadPromedio, 1, 2, humedadPromedioString);
+
+        Serial.print("Valor de humedad promediado sensor 1: ");
+        Serial.println(humedadString1);
+        Serial.print("Valor de humedad promediado sensor 2: ");
+        Serial.println(humedadString2);
+        Serial.print("Valor de humedad promediado de ambos sensores: ");
+        Serial.println(humedadPromedioString);
+        client.publish("humedad", humedadPromedioString);
+
+        double temp = atof(tempString);
+        double humedadPromedioDouble = atof(humedadPromedioString);
+
+        unsigned long currentMillis = millis();
+        Serial.print("Current Millis: ");
+        Serial.println(currentMillis);
+
+        // Control del ventilador
+        if (temp > 25.0) {
+            digitalWrite(ventiladorPin, HIGH); // Encender ventilador
+            Serial.println("Ventilador encendido (Temp > 25°C)");
+        } else {
+            digitalWrite(ventiladorPin, LOW); // Apagar ventilador
+            Serial.println("Ventilador apagado (Temp <= 25°C)");
+        }
+
+        // Control de la bomba de agua
+        if (aguaSuficiente) {
+            if (humedadPromedioDouble < 60.0) {
+                digitalWrite(bombaDeAguaPin, HIGH); // Bomba de agua encendida
+                Serial.println("Bomba de agua encendida (Hum < 60%)");
+            } else {
+                digitalWrite(bombaDeAguaPin, LOW); // Bomba de agua apagada
+                Serial.println("Bomba de agua apagada (Hum >= 60%)");
+            }
+        } else {
+            digitalWrite(bombaDeAguaPin, LOW); // Apagar la bomba de agua si el nivel de agua es bajo
+            Serial.println("Bomba de agua desactivada por nivel bajo de agua");
+        }
+
+        int adcValue = analogRead(phSensorPin);
+        float voltage = adcValue * (3.3 / 4095.0);
+        float pHValue = (voltage * slope) + intercept;
+
+        char phString[20];
+        dtostrf(pHValue, 1, 2, phString);
+        Serial.print("Valor ADC: ");
+        Serial.print(adcValue);
+        Serial.print(", Voltaje: ");
+        Serial.print(voltage, 2);
+        Serial.print(" V, pH: ");
+        Serial.println(pHValue, 2);
+        client.publish("ph", phString);
+
+        delay(1000);
+    }
 }
 
 int leerYSuavizarHumedad(int pin, int readings[], int &readIndex, int &total) {

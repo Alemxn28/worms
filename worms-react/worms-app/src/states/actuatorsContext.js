@@ -7,8 +7,8 @@ export const useActuators = () => useContext(ActuatorsContext);
 
 export const ActuatorsProvider = ({ children }) => {
   const [actuators, setActuators] = useState({
-    ventilador: false,
-    sistemaRiego: false,
+    Ventilador: false,
+    SistemaRiego: false,
     // Agrega más actuadores si es necesario
   });
 
@@ -20,7 +20,7 @@ export const ActuatorsProvider = ({ children }) => {
   };
 
   return (
-    <ActuatorsContext.Provider value={{ actuators, toggleActuator }}>
+    <ActuatorsContext.Provider value={{ actuators, toggleActuator, setActuators }}>
       {children}
     </ActuatorsContext.Provider>
   );
