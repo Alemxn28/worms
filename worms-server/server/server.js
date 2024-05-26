@@ -37,6 +37,7 @@ app.use(session({
 }));
 
 // Middlewares para servir archivos estáticos y parsear cuerpos de request
+app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -168,12 +169,41 @@ app.get('/api/data/:timeframe', (req, res) => {
 });
 
 
-// Rutas de Autenticación y Sesión
+app.get('/login', (req,res) => {
+  res.redirect('/login');
+  });
+
+app.get('/null', (req, res) => {
+  if (req.session.user) {
+    let ruta = req.session.route || 'sensores'; // Proporciona una ruta por defecto si no hay ninguna guardada.
+    res.redirect('/' + ruta);
+  } else {
+    res.redirect('/login');
+  }
+});
+
+app.get('/', (req,res) => {
+  if (req.session.user) {
+    res.redirect('/sensores');
+  } else {
+    res.redirect('/login');
+  }
+});
+
+app.post('/updateCredentials', (req, res) => {
+  const { newUsername, newPassword } = req.body;
+  // Actualiza las credenciales globales
+  currentUser = newUsername;
+  currentPassword = newPassword;
+  // Puedes agregar aquí validaciones adicionales si es necesario
+  res.json({ status: 'ok', message: 'Credenciales actualizadas' });
+});
+
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (username === currentUser && password === currentPassword) {
     req.session.user = username;
-    res.json({ status: 'ok' });
+    res.json({ status: 'ok'}); // Envía JSON con URL de redirección
   } else {
     res.status(401).json({ status: 'error', message: 'Usuario y/o contraseña incorrectos' });
   }
@@ -181,15 +211,54 @@ app.post('/login', (req, res) => {
 
 app.get('/logout', (req, res) => {
   req.session.destroy(err => {
-    if (err) {
-      return res.status(500).send("Error al cerrar sesión");
-    }
-    res.redirect('/login');
+      if (err) {
+          console.error(err);
+          res.send("Error al cerrar sesión");
+      } else {
+          res.redirect('/login');
+      }
   });
 });
 
+app.get('/actuadores', (req, res) => {
+  if (req.session.user) {
+    res.sendFile('Actuadores.html', { root: __dirname });
+  } else {
+    res.redirect('/login');
+
+    const { status } = req.body; // status puede ser 'ON' o 'OFF'
+    mqttClient.publish('actuador/relevador', status);
+    res.json({ message: 'Comando enviado al relevador.' });
+  }
+});
+
+app.get('/administrador', (req, res) => {
+  if (req.session.user) {
+    res.sendFile('Administrador.html', { root: __dirname });
+  } else {
+    res.redirect('/login');
+  }
+});
+
+app.get('/registros', (req, res) => {
+  if (req.session.user) {
+    res.redirect('/registros');
+  } else {
+    res.redirect('/login');
+  }
+  
+});
+
+app.get('/checkAuth', (req, res) => {
+  if (req.session.user) {
+    res.json({ isAuthenticated: true });
+  } else {
+    res.json({ isAuthenticated: false });
+  }
+});
+//process.env.NODE_ENV
 // Servir archivos estáticos de React en producción
-if (process.env.NODE_ENV === 'production') {
+if ( 'production' === 'production') {
   app.use(express.static(path.join(__dirname, '../../worms-react/worms-app/build')));
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../../worms-react/worms-app/build', 'index.html'));
