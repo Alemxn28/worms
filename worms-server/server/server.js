@@ -8,10 +8,6 @@ const socketIo = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 
-// Variables globales para el usuario actual
-let currentUser = 'worms@gmail.com';
-let currentPassword = '1234';
-
 // Crear una aplicación Express y configurar el servidor HTTP y WebSocket
 const app = express();
 const server = http.createServer(app);
@@ -117,6 +113,52 @@ sub.on('message', (topic, message) => {
 }
 });
 
+// Endpoint para registrar nuevos usuarios
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+
+  // Validar que los campos no estén vacíos
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+  }
+
+  // Insertar nuevo usuario con rol 'user' en la base de datos
+  const sql = 'INSERT INTO usuarios (correo, contraseña, rol) VALUES (?, ?, ?)';
+  const values = [username, password, 'user'];
+
+  db.query(sql, values, (err, results) => {
+    if (err) {
+      console.error('Error al insertar nuevo usuario:', err);
+      return res.status(500).json({ message: 'Error al registrar el usuario.' });
+    }
+
+    res.json({ message: 'Usuario registrado con éxito.' });
+  });
+});
+
+// Endpoint para manejar el login
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+
+  const sql = 'SELECT * FROM usuarios WHERE correo = ? AND contraseña = ?';
+  const values = [username, password];
+
+  db.query(sql, values, (err, results) => {
+    if (err) {
+      console.error('Error al verificar las credenciales:', err);
+      return res.status(500).json({ message: 'Error al verificar las credenciales.' });
+    }
+
+    if (results.length > 0) {
+      const user = results[0];
+      req.session.user = username;
+      res.json({ status: 'ok', role: user.rol });
+    } else {
+      res.status(401).json({ status: 'error', message: 'Usuario y/o contraseña incorrectos' });
+    }
+  });
+});
+
 app.post('/actuadores', (req, res) => {
   const { name, status } = req.body;
   let topic = '';
@@ -215,16 +257,6 @@ app.post('/updateCredentials', (req, res) => {
   currentPassword = newPassword;
   // Puedes agregar aquí validaciones adicionales si es necesario
   res.json({ status: 'ok', message: 'Credenciales actualizadas' });
-});
-
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === currentUser && password === currentPassword) {
-    req.session.user = username;
-    res.json({ status: 'ok'}); // Envía JSON con URL de redirección
-  } else {
-    res.status(401).json({ status: 'error', message: 'Usuario y/o contraseña incorrectos' });
-  }
 });
 
 app.get('/logout', (req, res) => {

@@ -1,4 +1,4 @@
-//LoginForm.js
+// LoginForm.js
 import React, { useState, useContext, useEffect } from 'react';
 import Button from '../elements/button';
 import { AuthContext } from '../../AuthContext';
@@ -9,7 +9,7 @@ const LoginForm = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const { setIsAuthenticated } = useContext(AuthContext);
+  const { setIsAuthenticated, setUserRole } = useContext(AuthContext);
   const { isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -30,7 +30,9 @@ const LoginForm = () => {
       const data = await response.json();
       if (data.status === 'ok') {
         localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', data.role);
         setIsAuthenticated(true);
+        setUserRole(data.role);
         navigate('/sensores');
       } else {
         setErrorMsg('Inicio de sesión fallido');

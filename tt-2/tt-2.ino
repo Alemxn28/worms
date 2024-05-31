@@ -29,7 +29,7 @@ int averageHumedad2 = 0;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-const char* mqttServer = "192.168.0.9";
+const char* mqttServer = "192.168.18.199"; 
 const int mqttPort = 9000;
 const char* mqttUser = "";
 const char* mqttPassword = "";
