@@ -28,13 +28,13 @@ const Sensors = () => {
       setCurrentTemperatura1(data.value);
       updateChartData('temperatura1Data', temperatura1Data, setTemperatura1Data, data.value);
     });
-    socket.on('humedad1', data => {
-      setCurrentHumedad1(data.value);
-      updateChartData('humedad1Data', humedad1Data, setHumedad1Data, data.value);
-    });
     socket.on('temperatura2', data => {
       setCurrentTemperatura2(data.value);
       updateChartData('temperatura2Data', temperatura2Data, setTemperatura2Data, data.value);
+    });
+    socket.on('humedad1', data => {
+      setCurrentHumedad1(data.value);
+      updateChartData('humedad1Data', humedad1Data, setHumedad1Data, data.value);
     });
     socket.on('humedad2', data => {
       setCurrentHumedad2(data.value);

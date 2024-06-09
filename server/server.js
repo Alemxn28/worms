@@ -106,7 +106,7 @@ sub.on('message', (topic, message) => {
       if (!isNaN(data)) {
         const sql = 'INSERT INTO humedad1 (id, data) VALUES (?, ?)';
         db.query(sql, [3, data], (error, results) => { // ID 3 para humedad
-              if (error) {
+              if (error) {z
                   console.error('Error al insertar en la base de datos:', error);
               } else {
                   console.log('¡Datos guardados!');
@@ -208,12 +208,30 @@ app.post('/actuadores', (req, res) => {
   res.json({ message: `Comando ${status} enviado al ${name}.` });
 });
 
+app.post('/actuadores2', (req, res) => {
+  const { name, status } = req.body;
+  let topic = '';
+  if (name === 'Ventilador') {
+    topic = 'actuador2/ventilador2';
+  } else if (name === 'Sistema de Riego') {
+    topic = 'actuador2/bombaDeAgua2';
+  }
+  pub.publish(topic, status);
+  res.json({ message: `Comando ${status} enviado al ${name}.` });
+});
+
 app.post('/modo', (req, res) => {
-  const { status } = req.body;
-  pub.publish('modo/automatico', status);
+  const { status } = req.body; // status debería ser 'ON' o 'OFF'
+  pub.publish('modo/automatico', status); // para ESP32 #1
+  pub.publish('modo2/automatico2', status); // para ESP32 #2
   res.json({ message: `Modo automático ${status}` });
 });
 
+/* app.post('/modo2', (req, res) => {
+  const { status } = req.body;
+  pub.publish('modo2/automatico2', status);
+  res.json({ message: `Modo automático ${status}` });
+}); */
 app.get('/api/data/:timeframe', (req, res) => {
   const timeframe = req.params.timeframe;
   const today = new Date();

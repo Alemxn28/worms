@@ -25,8 +25,7 @@ const Actuators = () => {
       // Ensure all actuators are turned off when switching to manual mode
       sendCommandToRelay('Ventilador', 'OFF');
       sendCommandToRelay('Sistema de Riego', 'OFF');
-      sendCommandToRelay('Ventilador2', 'OFF');
-      sendCommandToRelay('Sistema de Riego2', 'OFF');
+
       // Reset the actuators' states to OFF in the context
       setActuators({
         Ventilador: false,
