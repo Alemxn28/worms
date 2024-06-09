@@ -6,9 +6,10 @@ const aedes = require('aedes')({
 const http = require('http');
 const net = require('net');
 const ws = require('websocket-stream');
+require('dotenv').config()
 
-const tcpPort = 9000; // Puerto para conexiones TCP
-const wsPort = 9001; // Puerto para conexiones WebSocket
+const tcpPort = process.env.TCP_PORT; // Puerto para conexiones TCP
+const wsPort = process.env.WS_PORT; // Puerto para conexiones WebSocket
 
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);

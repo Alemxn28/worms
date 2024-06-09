@@ -10,7 +10,7 @@ const Records = () => {
   // Función para buscar datos desde el servidor
   const fetchData = (option) => {
     let endpoint = option.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const url = `http://localhost:3000/api/data/${endpoint}`;
+    const url = `http://172.190.84.143:3000/api/data/${endpoint}`;
 
     fetch(url)
       .then(response => response.json())

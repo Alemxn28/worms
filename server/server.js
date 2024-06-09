@@ -7,6 +7,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const cors = require('cors');
+require('dotenv').config()
 
 // Crear una aplicación Express y configurar el servidor HTTP y WebSocket
 const app = express();
@@ -21,12 +22,13 @@ const io = socketIo(server, {
 // Configuración de CORS
 app.use(cors({
   origin: "http://localhost:3001", // Permite solicitudes desde el cliente en desarrollo
+  //origin: "*", // Permite solicitudes desde el cliente en desarrollo
   credentials: true
 }));
 
 // Configuración de sesión
 app.use(session({
-  secret: 'salsa2023',
+  secret: process.env.SECRET_SESSION,
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false } // Ajustar a true si usas HTTPS
@@ -39,10 +41,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Conexión a la base de datos
 const db = mysql.createConnection({
-  host: "localhost",
-  user: 'root',
-  password: 'password',
-  database: 'mqqtnode'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 db.connect(err => {
@@ -54,8 +56,8 @@ db.connect(err => {
 });
 
 // Conexión al servidor MQTT
-const sub = mqtt.connect('mqtt://localhost:9000');
-
+const sub = mqtt.connect(process.env.MQTT_SERVER);
+const pub = mqtt.connect(process.env.MQTT_SERVER);
 
 // Subscripción a tópicos
 sub.on('connect', () => {
@@ -206,28 +208,10 @@ app.post('/actuadores', (req, res) => {
   res.json({ message: `Comando ${status} enviado al ${name}.` });
 });
 
-app.post('/actuadores2', (req, res) => {
-  const { name, status } = req.body;
-  let topic = '';
-  if (name === 'Ventilador2') {
-    topic = 'actuador2/ventilador2';
-  } else if (name === 'Sistema de Riego') {
-    topic = 'actuador2/bombaDeAgua2';
-  }
-  pub.publish(topic, status);
-  res.json({ message: `Comando ${status} enviado al ${name}.` });
-});
-
 app.post('/modo', (req, res) => {
   const { status } = req.body;
   pub.publish('modo/automatico', status);
   res.json({ message: `Modo automático ${status}` });
-});
-
-app.post('/modo2', (req, res) => {
-  const { status } = req.body;
-  pub.publish('modo2/automatico2', status);
-  res.json({ message: `Modo automático2 ${status}` });
 });
 
 app.get('/api/data/:timeframe', (req, res) => {
@@ -365,8 +349,8 @@ if ( 'production' === 'production') {
 }
 
 // Inicia el servidor
-server.listen(3000, () => {
-  console.log('Servidor web y WebSocket corriendo en http://localhost:3000');
+server.listen(+process.env.PORT, () => {
+  console.log(`Servidor web y WebSocket corriendo en http://localhost:${process.env.PORT}`);
 });
 
 // Cerrar la conexión a la base de datos cuando ya no se necesite

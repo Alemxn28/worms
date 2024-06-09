@@ -1,0 +1,34 @@
+services:
+
+  worms-broker:
+    image: alemxn28/worms-broker:v1.0.0
+    environment:
+      - TCP_PORT=${BROKER_TCP_PORT}
+      - WS_PORT=${BROKER_WS_PORT}
+    ports:
+      - "${BROKER_TCP_PORT}:${BROKER_TCP_PORT}"
+      - "${BROKER_WS_PORT}:${BROKER_WS_PORT}"
+
+  worms-server:
+    image: alemxn28/worms-server:v1.0.1
+    environment:
+      - PORT=${SERVER_PORT}
+      - SECRET_SESSION=${SERVER_SECRET_SESSION}
+      - DB_HOST=${SERVER_DB_HOST}
+      - DB_USER=${SERVER_DB_USER} 
+      - DB_PASSWORD=${SERVER_DB_PASSWORD}
+      - DB_NAME=${SERVER_DB_NAME}
+      - MQTT_SERVER=${SERVER_MQTT_SERVER}
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    depends_on:
+      - worms-broker
+
+  worms-front:
+    image: alemxn28/worms-front:v1.0.4
+    ports:
+      - "${FRONT_PORT}:${FRONT_PORT}"
+    depends_on:
+      - worms-server
+
+  

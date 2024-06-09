@@ -25,6 +25,8 @@ const Actuators = () => {
       // Ensure all actuators are turned off when switching to manual mode
       sendCommandToRelay('Ventilador', 'OFF');
       sendCommandToRelay('Sistema de Riego', 'OFF');
+      sendCommandToRelay('Ventilador2', 'OFF');
+      sendCommandToRelay('Sistema de Riego2', 'OFF');
       // Reset the actuators' states to OFF in the context
       setActuators({
         Ventilador: false,
@@ -44,10 +46,33 @@ const Actuators = () => {
     .then(response => response.json())
     .then(data => console.log(data.message))
     .catch(error => console.error('Error:', error));
+
+    fetch('http://localhost:3000/actuadores2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, status })
+    })
+    .then(response => response.json())
+    .then(data => console.log(data.message))
+    .catch(error => console.error('Error:', error));
+
   };
 
   const sendModeCommand = (status) => {
     fetch('http://localhost:3000/modo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status })
+    })
+    .then(response => response.json())
+    .then(data => console.log(data.message))
+    .catch(error => console.error('Error:', error));
+
+    fetch('http://localhost:3000/modo2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
